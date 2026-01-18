@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Decision Tree Visualizer</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8f9fa; }
+    .node { border: 1px solid #bbb; border-radius: 8px; background: #fff; padding: 8px 12px; margin: 8px; box-shadow: 0 2px 6px #eee; }
+    .children { margin-left: 32px; border-left: 2px dashed #ccc; padding-left: 16px; }
+    .question { font-weight: bold; color: #2c3e50; }
+    .meta { font-size: 0.9em; color: #888; margin-bottom: 4px; }
+    .answer { color: #34495e; margin-top: 4px; }
+    .level { font-size: 0.85em; color: #0074d9; }
+    .parent-link { font-size: 0.8em; color: #b10dc9; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .tree-title { font-size: 2em; margin-bottom: 24px; color: #0074d9; }
+    .search { margin-bottom: 16px; }
+    .search input { padding: 6px; font-size: 1em; width: 300px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="tree-title">Decision Tree Structure Visualizer</div>
+    <div class="search">
+      <input type="text" id="searchBox" placeholder="Search question or answer..." oninput="filterTree()">
+    </div>
+    <div id="tree"></div>
+  </div>
+  <script>
+    // Load the execution_report.json
+    async function loadTree() {
+      const response = await fetch('execution_report.json');
+      const data = await response.json();
+      // Try to find the root node
+      let rootId = 'node_0';
+      let nodes = data.tree_structure || data.tree || data;
+      if (!nodes[rootId]) {
+        rootId = Object.keys(nodes)[0];
+      }
+      renderNode(nodes[rootId], rootId, nodes, document.getElementById('tree'));
+    }
+
+    function renderNode(node, nodeId, allNodes, container) {
+      if (!node) return;
+      const div = document.createElement('div');
+      div.className = 'node';
+      div.setAttribute('data-question', node.question || '');
+      div.setAttribute('data-answer', node.answer || '');
+      div.innerHTML = `
+        <div class="meta">
+          <span class="level">Level: ${node.level ?? ''}</span>
+          <span class="parent-link">${node.parent_id ? 'Parent: ' + node.parent_id : ''}</span>
+        </div>
+        <div class="question">${node.question ? node.question : '<i>No question</i>'}</div>
+        <div class="answer">${node.answer ? node.answer : '<i>No answer</i>'}</div>
+      `;
+      container.appendChild(div);
+      if (node.children && Object.keys(node.children).length > 0) {
+        const childrenDiv = document.createElement('div');
+        childrenDiv.className = 'children';
+        for (const childId in node.children) {
+          renderNode(node.children[childId], childId, allNodes, childrenDiv);
+        }
+        container.appendChild(childrenDiv);
+      }
+    }
+
+    function filterTree() {
+      const query = document.getElementById('searchBox').value.toLowerCase();
+      const nodes = document.querySelectorAll('.node');
+      nodes.forEach(node => {
+        const q = node.getAttribute('data-question').toLowerCase();
+        const a = node.getAttribute('data-answer').toLowerCase();
+        if (q.includes(query) || a.includes(query)) {
+          node.style.display = '';
+        } else {
+          node.style.display = 'none';
+        }
+      });
+    }
+
+    loadTree();
+  </script>
+</body>
+</html>

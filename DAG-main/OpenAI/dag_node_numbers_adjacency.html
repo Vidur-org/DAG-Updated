@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DAG Node Numbers (Adjacency)</title>
+  <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.2/dist/vis-network.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/vis-network@9.1.2/dist/vis-network.min.css" rel="stylesheet" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8f9fa; }
+    #mynetwork { width: 100%; height: 900px; border: 1px solid #ccc; background: #fff; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .title { font-size: 2em; margin-bottom: 24px; color: #0074d9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title">DAG Node Numbers (Adjacency Structure)</div>
+    <div id="mynetwork"></div>
+  </div>
+  <script>
+    // Hardcoded adjacency from your JSON excerpt
+    const forward = {
+      "0": ["1","2","3","4","5"],
+      "1": ["6"], "2": ["7"], "3": ["8"], "4": ["9"], "5": ["10"],
+      "6": ["11"], "7": ["12"], "8": ["13"], "9": ["14"], "10": ["15"],
+      "11": ["16","17","18"], "12": ["19","20"], "13": ["21"], "14": ["22"], "15": ["23"],
+      "16": ["24","25","28"], "17": ["24","26","28"], "18": ["25","26","28"],
+      "19": ["27"], "20": ["27"],
+      "21": [], "22": [], "23": [], "24": [], "25": [], "26": [], "27": [], "28": []
+    };
+    const backward = {
+      "0": null, "1": "0", "2": "0", "3": "0", "4": "0", "5": "0", "6": "1", "7": "2", "8": "3", "9": "4", "10": "5", "11": "6", "12": "7", "13": "8", "14": "9", "15": "10", "16": "11", "17": "11", "18": "11", "19": "12", "20": "12", "21": "13", "22": "14", "23": "15", "24": ["16","17"], "25": ["16","18"], "26": ["17","18"], "27": ["19","20"], "28": ["16","17","18"]
+    };
+    // Build nodes and edges
+    let nodesData = [];
+    let edgesData = [];
+    for (const nodeId in forward) {
+      nodesData.push({ id: nodeId, label: nodeId, title: nodeId });
+      for (const childId of forward[nodeId]) {
+        edgesData.push({ from: nodeId, to: childId });
+      }
+    }
+    // Add multi-parent edges from backward
+    for (const nodeId in backward) {
+      const parents = backward[nodeId];
+      if (Array.isArray(parents)) {
+        for (const pid of parents) {
+          edgesData.push({ from: pid, to: nodeId, color: { color: '#b10dc9' } });
+        }
+      }
+    }
+    function drawGraph(nodesData, edgesData) {
+      const container = document.getElementById('mynetwork');
+      const data = {
+        nodes: new vis.DataSet(nodesData),
+        edges: new vis.DataSet(edgesData)
+      };
+      const options = {
+        layout: { hierarchical: false },
+        nodes: {
+          shape: 'ellipse',
+          margin: 10,
+          font: { size: 18 },
+          borderWidth: 2
+        },
+        edges: {
+          arrows: 'to',
+          color: { color: '#888' },
+          smooth: true
+        },
+        physics: {
+          stabilization: true,
+          barnesHut: { gravitationalConstant: -8000, springLength: 120 }
+        },
+        interaction: {
+          tooltipDelay: 200,
+          hover: true,
+          navigationButtons: true,
+          keyboard: true
+        }
+      };
+      new vis.Network(container, data, options);
+    }
+    drawGraph(nodesData, edgesData);
+  </script>
+</body>
+</html>

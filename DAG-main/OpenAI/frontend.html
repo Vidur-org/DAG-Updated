@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Analysis Tree - Node Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .tree-container {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .tree-node {
+            margin: 10px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tree-node:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .tree-node.selected {
+            background: #e7f3ff;
+            border-left-color: #007bff;
+        }
+
+        .tree-node.level-0 {
+            border-left-color: #667eea;
+            font-weight: bold;
+        }
+
+        .tree-node.level-1 {
+            border-left-color: #28a745;
+            margin-left: 20px;
+        }
+
+        .tree-node.level-2 {
+            border-left-color: #ffc107;
+            margin-left: 40px;
+        }
+
+        .tree-node.level-3 {
+            border-left-color: #fd7e14;
+            margin-left: 60px;
+        }
+
+        .tree-node.level-4 {
+            border-left-color: #dc3545;
+            margin-left: 80px;
+        }
+
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .node-id {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .node-level {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .node-question {
+            color: #333;
+            margin-bottom: 5px;
+            line-height: 1.5;
+        }
+
+        .node-answer {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e0e0e0;
+            max-height: 100px;
+            overflow: hidden;
+        }
+
+        .node-answer.expanded {
+            max-height: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .node-details {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .node-details h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .node-details-section {
+            margin-bottom: 20px;
+        }
+
+        .node-details-section h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .node-details-section p {
+            color: #666;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .edit-form {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .edit-form h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .button-group .btn {
+            flex: 1;
+        }
+
+        .response-section {
+            margin-bottom: 25px;
+        }
+
+        .response-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .decision-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .decision-box .position {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .decision-box .confidence {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-top: 10px;
+        }
+
+        .analysis-text {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            line-height: 1.8;
+            color: #333;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .progress-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Financial Analysis Tree Editor</h1>
+            <p>Interactive Node Editing & Tree Visualization</p>
+        </div>
+
+        <div class="content">
+            <div class="main-panel">
+                <!-- Analysis Form -->
+                <div class="card">
+                    <h2>Start New Analysis</h2>
+                    <form id="analyzeForm">
+                        <div class="form-group">
+                            <label for="userId">User ID:</label>
+                            <input type="text" id="userId" value="user123" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="query">Investment Query:</label>
+                            <textarea id="query" required>Should I invest in RELIANCE for October 2024 to December 2024?</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="preset">Analysis Preset:</label>
+                            <select id="preset">
+                                <option value="fast" selected>Fast (~2 min) - Levels: 2, Children: 1</option>
+                                <option value="balanced">Balanced (~5 min) - Levels: 3, Children: 2</option>
+                                <option value="thorough">Thorough (~10 min) - Levels: 4, Children: 2</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="analyzeBtn">Start Analysis</button>
+                    </form>
+                </div>
+
+                <!-- Analysis Response -->
+                <div class="card hidden" id="responseCard">
+                    <h2>Analysis Result</h2>
+                    <div id="responseContent">
+                        <div class="response-section">
+                            <h3>Final Investment Decision</h3>
+                            <div id="finalDecision" class="decision-box"></div>
+                        </div>
+                        <div class="response-section">
+                            <h3>Detailed Analysis</h3>
+                            <div id="detailedAnalysis" class="analysis-text"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tree Visualization -->
+                <div class="card">
+                    <h2>Decision Tree</h2>
+                    <div id="treeContainer" class="tree-container">
+                        <div class="loading">
+                            <p>Start an analysis to see the tree structure</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <!-- Node Editor -->
+                <div class="card edit-form hidden" id="nodeEditor">
+                    <h3>Edit Node</h3>
+                    <div id="editorAlert"></div>
+                    <div class="form-group">
+                        <label>Node ID:</label>
+                        <input type="text" id="editNodeId" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Current Question:</label>
+                        <textarea id="currentQuestion" readonly></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>New Question:</label>
+                        <textarea id="newQuestion" required></textarea>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-success" id="saveEditBtn">Save & Regenerate</button>
+                        <button class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Node Details -->
+                <div class="card hidden" id="nodeDetails">
+                    <h2>Node Details</h2>
+                    <div class="node-details" id="nodeDetailsContent">
+                        <p>Select a node to view details</p>
+                    </div>
+                </div>
+
+                <!-- Session Info -->
+                <div class="card">
+                    <h2>Session Info</h2>
+                    <div id="sessionInfo">
+                        <p>No active session</p>
+                    </div>
+                    <div class="stats hidden" id="statsContainer">
+                        <div class="stat-item">
+                            <div class="stat-value" id="statNodes">0</div>
+                            <div class="stat-label">Nodes</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="statLLMCalls">0</div>
+                            <div class="stat-label">LLM Calls</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="statEdits">0</div>
+                            <div class="stat-label">Edits</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="statLevels">0</div>
+                            <div class="stat-label">Max Levels</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let currentSessionId = null;
+        let currentNodeId = null;
+        let nodes = [];
+
+        // Form submission
+        document.getElementById('analyzeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = true;
+            btn.textContent = 'Analyzing...';
+
+            // Show progress
+            showProgress();
+
+            const userId = document.getElementById('userId').value;
+            const query = document.getElementById('query').value;
+            const preset = document.getElementById('preset').value;
+
+            try {
+                const startTime = Date.now();
+                const response = await fetch(`${API_BASE}/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        query: query,
+                        preferences: { preset: preset, save: true }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: 'Analysis failed' }));
+                    throw new Error(errorData.detail || 'Analysis failed');
+                }
+
+                const data = await response.json();
+                const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                
+                currentSessionId = data.session_id;
+                
+                // Display the response
+                displayResponse(data);
+                
+                showAlert(`Analysis completed successfully in ${elapsedTime}s!`, 'success');
+                await loadNodes();
+                await loadReport();
+                
+            } catch (error) {
+                hideProgress();
+                showAlert(`Error: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Start Analysis';
+            }
+        });
+
+        // Show progress indicator
+        function showProgress() {
+            const treeContainer = document.getElementById('treeContainer');
+            treeContainer.innerHTML = `
+                <div class="progress-container">
+                    <p><strong>Analysis in progress...</strong></p>
+                    <p>This may take up to 2 minutes for Fast preset</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill">0%</div>
+                    </div>
+                </div>
+            `;
+            
+            // Animate progress (simulated)
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 90) progress = 90; // Don't go to 100% until done
+                document.getElementById('progressFill').style.width = progress + '%';
+                document.getElementById('progressFill').textContent = Math.round(progress) + '%';
+            }, 1000);
+            
+            // Store interval for cleanup
+            window.progressInterval = interval;
+        }
+
+        function hideProgress() {
+            if (window.progressInterval) {
+                clearInterval(window.progressInterval);
+            }
+            const progressFill = document.getElementById('progressFill');
+            if (progressFill) {
+                progressFill.style.width = '100%';
+                progressFill.textContent = '100%';
+            }
+        }
+
+        // Display response
+        function displayResponse(data) {
+            hideProgress();
+            
+            const responseCard = document.getElementById('responseCard');
+            const finalDecision = document.getElementById('finalDecision');
+            const detailedAnalysis = document.getElementById('detailedAnalysis');
+            
+            // Get final decision from execution report
+            const decision = data.execution_report?.final_decision || {};
+            const answer = data.answer || '';
+            
+            // Display final decision
+            let decisionHtml = '';
+            if (decision.position) {
+                const positionClass = decision.position.toLowerCase();
+                decisionHtml = `
+                    <div class="position">Position: ${decision.position}</div>
+                    ${decision.confidence_level ? `<div class="confidence">Confidence: ${(decision.confidence_level * 100).toFixed(1)}%</div>` : ''}
+                    ${decision.detailed_analysis ? `<div style="margin-top: 15px; font-size: 0.95em;">${escapeHtml(decision.detailed_analysis.substring(0, 500))}...</div>` : ''}
+                `;
+            } else {
+                decisionHtml = '<div>Analysis completed. See detailed analysis below.</div>';
+            }
+            
+            finalDecision.innerHTML = decisionHtml;
+            
+            // Display detailed analysis
+            detailedAnalysis.textContent = answer || 'No detailed analysis available.';
+            
+            // Show response card
+            responseCard.classList.remove('hidden');
+            
+            // Scroll to response
+            responseCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // Load nodes
+        async function loadNodes() {
+            if (!currentSessionId) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/sessions/${currentSessionId}/nodes`);
+                if (!response.ok) throw new Error('Failed to load nodes');
+                
+                const data = await response.json();
+                nodes = data.nodes;
+                renderTree();
+                updateSessionInfo(data);
+                
+                // Update response if we have new data
+                if (data.execution_report?.final_decision) {
+                    const responseCard = document.getElementById('responseCard');
+                    if (!responseCard.classList.contains('hidden')) {
+                        // Reload full report to get updated response
+                        const reportResponse = await fetch(`${API_BASE}/sessions/${currentSessionId}/report`);
+                        if (reportResponse.ok) {
+                            const reportData = await reportResponse.json();
+                            displayResponse({
+                                answer: reportData.execution_report.final_decision?.detailed_analysis || '',
+                                execution_report: reportData.execution_report
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                showAlert(`Error loading nodes: ${error.message}`, 'error');
+            }
+        }
+
+        // Load report
+        async function loadReport() {
+            if (!currentSessionId) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/sessions/${currentSessionId}/report`);
+                if (!response.ok) throw new Error('Failed to load report');
+                
+                const data = await response.json();
+                updateStats(data.execution_report.stats);
+            } catch (error) {
+                console.error('Error loading report:', error);
+            }
+        }
+
+        // Render tree
+        function renderTree() {
+            const container = document.getElementById('treeContainer');
+            
+            if (nodes.length === 0) {
+                container.innerHTML = '<div class="loading"><p>No nodes available</p></div>';
+                return;
+            }
+
+            container.innerHTML = nodes.map(node => `
+                <div class="tree-node level-${node.level} ${node.id === currentNodeId ? 'selected' : ''}" 
+                     onclick="selectNode('${node.id}')">
+                    <div class="node-header">
+                        <span class="node-id">Node ${node.id}</span>
+                        <span class="node-level">Level ${node.level}</span>
+                    </div>
+                    <div class="node-question">${escapeHtml(node.question)}</div>
+                    ${node.has_answer ? `<div class="node-answer">${escapeHtml(node.answer_preview || '')}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        // Select node
+        async function selectNode(nodeId) {
+            currentNodeId = nodeId;
+            const node = nodes.find(n => n.id === nodeId);
+            
+            if (!node) return;
+
+            // Update tree selection
+            renderTree();
+
+            // Show node details
+            await showNodeDetails(nodeId);
+
+            // Show editor
+            document.getElementById('nodeEditor').classList.remove('hidden');
+            document.getElementById('editNodeId').value = nodeId;
+            document.getElementById('currentQuestion').value = node.question;
+            document.getElementById('newQuestion').value = node.question;
+        }
+
+        // Show node details
+        async function showNodeDetails(nodeId) {
+            if (!currentSessionId) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/sessions/${currentSessionId}/nodes/${nodeId}`);
+                if (!response.ok) throw new Error('Failed to load node details');
+                
+                const node = await response.json();
+                const container = document.getElementById('nodeDetailsContent');
+                
+                container.innerHTML = `
+                    <div class="node-details-section">
+                        <h4>Question:</h4>
+                        <p>${escapeHtml(node.question)}</p>
+                    </div>
+                    ${node.answer ? `
+                    <div class="node-details-section">
+                        <h4>Answer:</h4>
+                        <p>${escapeHtml(node.answer)}</p>
+                    </div>
+                    ` : ''}
+                    <div class="node-details-section">
+                        <h4>Properties:</h4>
+                        <p>Level: ${node.level}<br>
+                        Is Leaf: ${node.is_leaf ? 'Yes' : 'No'}<br>
+                        Children: ${node.children ? node.children.length : 0}<br>
+                        Parent: ${node.parent_id || 'None'}</p>
+                    </div>
+                `;
+                
+                document.getElementById('nodeDetails').classList.remove('hidden');
+            } catch (error) {
+                showAlert(`Error loading node details: ${error.message}`, 'error');
+            }
+        }
+
+        // Save edit
+        document.getElementById('saveEditBtn').addEventListener('click', async () => {
+            if (!currentSessionId || !currentNodeId) return;
+
+            const newQuestion = document.getElementById('newQuestion').value.trim();
+            if (!newQuestion) {
+                showAlert('Please enter a new question', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('saveEditBtn');
+            btn.disabled = true;
+            btn.textContent = 'Regenerating...';
+
+            try {
+                const response = await fetch(`${API_BASE}/sessions/${currentSessionId}/nodes/${currentNodeId}/edit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_question: newQuestion })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Edit failed');
+                }
+
+                const data = await response.json();
+                showAlert('Node edited and subtree regenerated successfully!', 'success');
+                
+                // Reload nodes and report
+                await loadNodes();
+                await loadReport();
+                
+                // Update editor
+                document.getElementById('currentQuestion').value = data.updated_node.question;
+                document.getElementById('newQuestion').value = data.updated_node.question;
+                
+                // Update response display with new data
+                if (data.execution_report) {
+                    displayResponse({
+                        answer: data.execution_report.final_decision?.detailed_analysis || data.updated_node.answer || '',
+                        execution_report: data.execution_report
+                    });
+                }
+                
+            } catch (error) {
+                showAlert(`Error: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save & Regenerate';
+            }
+        });
+
+        // Cancel edit
+        document.getElementById('cancelEditBtn').addEventListener('click', () => {
+            document.getElementById('nodeEditor').classList.add('hidden');
+            currentNodeId = null;
+            renderTree();
+        });
+
+        // Update session info
+        function updateSessionInfo(data) {
+            const info = document.getElementById('sessionInfo');
+            info.innerHTML = `
+                <p><strong>Session ID:</strong></p>
+                <p style="font-size: 0.9em; word-break: break-all;">${currentSessionId}</p>
+                <p><strong>Total Nodes:</strong> ${data.total_nodes}</p>
+            `;
+        }
+
+        // Update stats
+        function updateStats(stats) {
+            document.getElementById('statNodes').textContent = stats.num_nodes || 0;
+            document.getElementById('statLLMCalls').textContent = stats.llm_calls || 0;
+            document.getElementById('statEdits').textContent = stats.edit_count || 0;
+            document.getElementById('statLevels').textContent = stats.max_levels || 0;
+            document.getElementById('statsContainer').classList.remove('hidden');
+        }
+
+        // Show alert
+        function showAlert(message, type) {
+            const alertDiv = document.getElementById('editorAlert');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Make selectNode available globally
+        window.selectNode = selectNode;
+    </script>
+</body>
+</html>

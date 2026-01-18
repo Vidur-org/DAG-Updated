@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DAG Node Graph Visualizer</title>
+  <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.2/dist/vis-network.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/vis-network@9.1.2/dist/vis-network.min.css" rel="stylesheet" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8f9fa; }
+    #mynetwork { width: 100%; height: 900px; border: 1px solid #ccc; background: #fff; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    .title { font-size: 2em; margin-bottom: 24px; color: #0074d9; }
+    .search { margin-bottom: 16px; }
+    .search input { padding: 6px; font-size: 1em; width: 350px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title">DAG Node Graph Visualizer</div>
+    <div class="search">
+      <input type="text" id="searchBox" placeholder="Search question or answer..." oninput="filterNodes()">
+    </div>
+    <div id="mynetwork"></div>
+  </div>
+  <script>
+    async function loadData() {
+      const response = await fetch('execution_report.json');
+      const data = await response.json();
+      let nodesData = [];
+      let edgesData = [];
+      let nodes = data.tree_structure || data.tree || data;
+      // Flatten all nodes
+      function traverse(node, nodeId, parentIds=[]) {
+        nodesData.push({
+          id: nodeId,
+          label: (node.question ? node.question.slice(0, 60) : nodeId),
+          title: `<b>Node:</b> ${nodeId}<br><b>Level:</b> ${node.level ?? ''}<br><b>Question:</b> ${node.question ?? ''}<br><b>Answer:</b> ${node.answer ?? ''}`,
+          color: node.level === 0 ? '#0074d9' : node.level === 1 ? '#2ecc40' : node.level === 2 ? '#ffdc00' : '#b10dc9'
+        });
+        parentIds.forEach(pid => {
+          edgesData.push({ from: pid, to: nodeId });
+        });
+        if (node.children && typeof node.children === 'object') {
+          for (const childId in node.children) {
+            traverse(node.children[childId], childId, [nodeId]);
+          }
+        }
+      }
+      let rootId = 'node_0';
+      if (!nodes[rootId]) rootId = Object.keys(nodes)[0];
+      traverse(nodes[rootId], rootId);
+      return { nodesData, edgesData };
+    }
+
+    function drawGraph(nodesData, edgesData) {
+      const container = document.getElementById('mynetwork');
+      const data = {
+        nodes: new vis.DataSet(nodesData),
+        edges: new vis.DataSet(edgesData)
+      };
+      const options = {
+        layout: { hierarchical: false },
+        nodes: {
+          shape: 'box',
+          margin: 10,
+          font: { multi: 'html', size: 16 },
+          borderWidth: 2
+        },
+        edges: {
+          arrows: 'to',
+          color: { color: '#888' },
+          smooth: true
+        },
+        physics: {
+          stabilization: true,
+          barnesHut: { gravitationalConstant: -8000, springLength: 120 }
+        },
+        interaction: {
+          tooltipDelay: 200,
+          hover: true,
+          navigationButtons: true,
+          keyboard: true
+        }
+      };
+      window.network = new vis.Network(container, data, options);
+    }
+
+    function filterNodes() {
+      const query = document.getElementById('searchBox').value.toLowerCase();
+      const allNodes = window.network.body.data.nodes.get();
+      const filteredIds = allNodes.filter(n =>
+        n.label.toLowerCase().includes(query) ||
+        (n.title && n.title.toLowerCase().includes(query))
+      ).map(n => n.id);
+      window.network.selectNodes(filteredIds);
+      window.network.fit({ nodes: filteredIds, animation: true });
+    }
+
+    loadData().then(({ nodesData, edgesData }) => {
+      drawGraph(nodesData, edgesData);
+    });
+  </script>
+</body>
+</html>

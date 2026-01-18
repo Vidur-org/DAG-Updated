@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DAG Node Numbers Structure</title>
+  <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.2/dist/vis-network.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/vis-network@9.1.2/dist/vis-network.min.css" rel="stylesheet" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8f9fa; }
+    #mynetwork { width: 100%; height: 900px; border: 1px solid #ccc; background: #fff; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .title { font-size: 2em; margin-bottom: 24px; color: #0074d9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title">DAG Node Numbers Structure</div>
+    <div id="mynetwork"></div>
+  </div>
+  <script>
+    async function loadData() {
+      const response = await fetch('execution_report.json');
+      const data = await response.json();
+      let nodesData = [];
+      let edgesData = [];
+      let nodes = data.tree_structure || data.tree || data;
+      function traverse(node, nodeId, parentIds=[]) {
+        nodesData.push({
+          id: nodeId,
+          label: nodeId.replace('node_', ''),
+          title: nodeId,
+          color: node.level === 0 ? '#0074d9' : node.level === 1 ? '#2ecc40' : node.level === 2 ? '#ffdc00' : '#b10dc9'
+        });
+        parentIds.forEach(pid => {
+          edgesData.push({ from: pid, to: nodeId });
+        });
+        if (node.children && typeof node.children === 'object') {
+          for (const childId in node.children) {
+            traverse(node.children[childId], childId, [nodeId]);
+          }
+        }
+      }
+      let rootId = 'node_0';
+      if (!nodes[rootId]) rootId = Object.keys(nodes)[0];
+      traverse(nodes[rootId], rootId);
+      return { nodesData, edgesData };
+    }
+    function drawGraph(nodesData, edgesData) {
+      const container = document.getElementById('mynetwork');
+      const data = {
+        nodes: new vis.DataSet(nodesData),
+        edges: new vis.DataSet(edgesData)
+      };
+      const options = {
+        layout: { hierarchical: false },
+        nodes: {
+          shape: 'ellipse',
+          margin: 10,
+          font: { size: 18 },
+          borderWidth: 2
+        },
+        edges: {
+          arrows: 'to',
+          color: { color: '#888' },
+          smooth: true
+        },
+        physics: {
+          stabilization: true,
+          barnesHut: { gravitationalConstant: -8000, springLength: 120 }
+        },
+        interaction: {
+          tooltipDelay: 200,
+          hover: true,
+          navigationButtons: true,
+          keyboard: true
+        }
+      };
+      new vis.Network(container, data, options);
+    }
+    loadData().then(({ nodesData, edgesData }) => {
+      drawGraph(nodesData, edgesData);
+    });
+  </script>
+</body>
+</html>

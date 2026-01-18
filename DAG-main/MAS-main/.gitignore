@@ -1,0 +1,16 @@
+venv/
+vv/
+venv_fresh/
+__pycache__/
+agents/*__pycache__
+executor/*__pycache__/
+financial_intelligence/*__pycache__/
+fundamental/*__pycache__/
+llm/*__pycache__/
+prompts/*__pycache__/
+tools/*__pycache__/
+router/*__pycache__/
+
+.env
+merged_nifty50.json
+merged_sorted_embeddings.json
