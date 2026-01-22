@@ -187,9 +187,38 @@ Edits a node's question and regenerates its subtree.
 
 **Note:** This operation may take 1-3 minutes as it regenerates the subtree and updates parent nodes.
 
-### 6. Get Full Report
+### 6. List All Sessions
+**GET /sessions**  
+Retrieves a list of all stored sessions from persistent storage.
+
+**Query Parameters:**
+- `user_id` (optional): Filter sessions by user ID
+- `limit` (optional): Maximum number of sessions to return (default: 50)
+
+**Response:**
+```json
+{
+  "sessions": [
+    {
+      "session_id": "uuid-string",
+      "created_at": "2026-01-18T18:00:00",
+      "query": "Should I invest in RELIANCE...",
+      "user_id": "user123",
+      "stock": "RELIANCE",
+      "num_nodes": 25,
+      "final_position": "long",
+      "file_path": "sessions/uuid-string.json"
+    },
+    ...
+  ],
+  "total": 10,
+  "total_stored": 10
+}
+```
+
+### 7. Get Full Report
 **GET /sessions/{session_id}/report**  
-Retrieves the complete execution report for a session.
+Retrieves the complete execution report for a session. Works with both active (in-memory) and stored (on-disk) sessions.
 
 **Path Parameters:**
 - `session_id` (required): Session ID
@@ -299,6 +328,15 @@ async function getReport(sessionId) {
   const response = await fetch(`${API_BASE}/sessions/${sessionId}/report`);
   return await response.json();
 }
+
+// List all previous sessions
+async function listSessions(userId = null, limit = 50) {
+  const url = userId 
+    ? `${API_BASE}/sessions?user_id=${userId}&limit=${limit}`
+    : `${API_BASE}/sessions?limit=${limit}`;
+  const response = await fetch(url);
+  return await response.json();
+}
 ```
 
 ### Python Example
@@ -352,9 +390,11 @@ These provide interactive testing interfaces where you can try all endpoints dir
 ## Session Management
 
 - Each analysis creates a unique session ID
-- Sessions are stored in memory (lost on server restart)
+- Sessions are automatically saved to persistent storage (disk)
+- Sessions persist across server restarts
 - Use the session ID for all subsequent operations
-- Sessions persist until a new analysis is started or server restarts
+- Previous sessions can be retrieved using GET /sessions endpoint
+- Reports are stored in the `sessions/` directory as JSON files
 
 ## Rate Limiting
 
