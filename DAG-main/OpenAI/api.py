@@ -25,6 +25,7 @@ if mas_main_path not in sys.path:
 from tree_orchestrator_main import TreeOrchestrator
 from preference_manager import PreferenceManager
 from config import CONFIG
+from session_storage import SessionStorage
 
 
 app = FastAPI(title="Tree + MAS Analysis API", version="1.0.0")
@@ -41,8 +42,11 @@ app.add_middleware(
 # Initialize PreferenceManager
 preference_manager = PreferenceManager()
 
-# Session storage: session_id -> orchestrator instance
+# Session storage: session_id -> orchestrator instance (in-memory for active sessions)
 session_storage: Dict[str, TreeOrchestrator] = {}
+
+# Persistent storage for sessions and reports
+persistent_storage = SessionStorage(storage_dir="sessions")
 
 
 # Request/Response Models
@@ -229,6 +233,18 @@ async def analyze(request: AnalyzeRequest):
         session_id = str(uuid.uuid4())
         session_storage[session_id] = orchestrator
         
+        # Step 8.5: Save to persistent storage
+        session_metadata = {
+            "user_id": user_id,
+            "query": request.query,
+            "max_levels": max_levels,
+            "max_children": max_children,
+            "preset": request.preferences.preset if request.preferences else None
+        }
+        persistent_storage.save_session(session_id, session_metadata, {
+            "execution_report": execution_report
+        })
+        
         # Step 9: Build response
         # Extract final answer from root node
         answer = root_node.answer or ""
@@ -361,6 +377,15 @@ async def edit_node(session_id: str, node_id: str, request: EditNodeRequest):
             "execution_log": orchestrator.execution_log
         }
         
+        # Update persistent storage with edited report
+        if session_id in session_storage:
+            stored_session = persistent_storage.load_session(session_id)
+            if stored_session:
+                session_metadata = stored_session.get("session_metadata", {})
+                persistent_storage.save_session(session_id, session_metadata, {
+                    "execution_report": execution_report
+                })
+        
         return {
             "success": True,
             "message": f"Node {node_id} edited and subtree regenerated",
@@ -381,32 +406,69 @@ async def edit_node(session_id: str, node_id: str, request: EditNodeRequest):
 @app.get("/sessions/{session_id}/report")
 async def get_report(session_id: str):
     """Get the full execution report for a session"""
-    if session_id not in session_storage:
-        raise HTTPException(status_code=404, detail="Session not found")
+    # Try in-memory storage first
+    if session_id in session_storage:
+        orchestrator = session_storage[session_id]
+        root_node = orchestrator.nodes.get("0")
+        final_decision = None
+        if root_node:
+            final_decision = await orchestrator.generate_final_decision(root_node)
+        
+        execution_report = {
+            "tree_structure": orchestrator.get_tree_structure(),
+            "all_nodes": orchestrator.export_all_nodes(),
+            "stats": {
+                "llm_calls": orchestrator.llm_call_count,
+                "bm25_hits": orchestrator.BM25_hits,
+                "internet_searches": orchestrator.internet_search_hits,
+                "num_nodes": orchestrator.num_nodes,
+                "edit_count": orchestrator.edit_count
+            },
+            "final_decision": final_decision,
+            "execution_log": orchestrator.execution_log
+        }
+        
+        return {
+            "session_id": session_id,
+            "execution_report": execution_report
+        }
     
-    orchestrator = session_storage[session_id]
-    root_node = orchestrator.nodes.get("0")
-    final_decision = None
-    if root_node:
-        final_decision = await orchestrator.generate_final_decision(root_node)
+    # Try persistent storage
+    stored_session = persistent_storage.load_session(session_id)
+    if stored_session:
+        return {
+            "session_id": session_id,
+            "execution_report": stored_session.get("execution_report", {}),
+            "created_at": stored_session.get("created_at"),
+            "from_storage": True
+        }
     
-    execution_report = {
-        "tree_structure": orchestrator.get_tree_structure(),
-        "all_nodes": orchestrator.export_all_nodes(),
-        "stats": {
-            "llm_calls": orchestrator.llm_call_count,
-            "bm25_hits": orchestrator.BM25_hits,
-            "internet_searches": orchestrator.internet_search_hits,
-            "num_nodes": orchestrator.num_nodes,
-            "edit_count": orchestrator.edit_count
-        },
-        "final_decision": final_decision,
-        "execution_log": orchestrator.execution_log
+    raise HTTPException(status_code=404, detail="Session not found")
+
+
+@app.get("/sessions")
+async def list_sessions(user_id: Optional[str] = None, limit: int = 50):
+    """List all stored sessions"""
+    sessions = persistent_storage.list_sessions(user_id=user_id, limit=limit)
+    return {
+        "sessions": sessions,
+        "total": len(sessions),
+        "total_stored": persistent_storage.get_session_count()
     }
+
+
+@app.get("/sessions/{session_id}/load")
+async def load_session(session_id: str):
+    """Load a stored session back into memory for editing"""
+    stored_session = persistent_storage.load_session(session_id)
+    if not stored_session:
+        raise HTTPException(status_code=404, detail="Session not found in storage")
     
+    # Return the stored data
     return {
         "session_id": session_id,
-        "execution_report": execution_report
+        "session_data": stored_session,
+        "message": "Session loaded from storage. Use session_id for node operations."
     }
 
 
@@ -418,10 +480,16 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "POST /analyze": "Analyze investment query",
+            "GET /sessions": "List all stored sessions",
             "GET /sessions/{session_id}/nodes": "Get all nodes for a session",
             "GET /sessions/{session_id}/nodes/{node_id}": "Get a specific node",
             "POST /sessions/{session_id}/nodes/{node_id}/edit": "Edit a node and regenerate subtree",
-            "GET /sessions/{session_id}/report": "Get full execution report"
+            "GET /sessions/{session_id}/report": "Get full execution report",
+            "GET /sessions/{session_id}/load": "Load stored session from disk"
+        },
+        "storage": {
+            "total_sessions": persistent_storage.get_session_count(),
+            "storage_directory": str(persistent_storage.storage_dir)
         }
     }
 

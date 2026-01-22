@@ -81,6 +81,10 @@ OpenAI/user_preferences.json
 financial_intelligence/last_run_results.json
 financial_intelligence/groq-backend/webgpt_response.json
 
+# Session storage (contains user data)
+OpenAI/sessions/
+!OpenAI/sessions/.gitkeep
+
 # Temporary files
 *.tmp
 *.temp
