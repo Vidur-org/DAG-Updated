@@ -993,9 +993,17 @@
                     execution_report: data.execution_report
                 });
                 
-                // Load nodes if available
-                await loadNodes();
-                await loadReport();
+                // Load nodes if available (may fail for stored sessions, that's okay)
+                try {
+                    await loadNodes();
+                } catch (e) {
+                    console.log("Note: Nodes may not be editable for stored sessions");
+                }
+                try {
+                    await loadReport();
+                } catch (e) {
+                    console.log("Note: Report stats may not be available");
+                }
                 
                 showAlert('Previous session loaded successfully', 'success');
                 
