@@ -288,56 +288,112 @@ async def analyze(request: AnalyzeRequest):
 @app.get("/sessions/{session_id}/nodes")
 async def get_nodes(session_id: str):
     """Get all nodes for a session"""
-    if session_id not in session_storage:
-        raise HTTPException(status_code=404, detail="Session not found")
+    # Try in-memory storage first
+    if session_id in session_storage:
+        orchestrator = session_storage[session_id]
+        nodes = []
+        
+        for node_id, node in sorted(orchestrator.nodes.items(), key=lambda x: int(x[0])):
+            nodes.append({
+                "id": node_id,
+                "level": node.level,
+                "question": node.question,
+                "is_leaf": node.is_leaf,
+                "has_answer": node.answer is not None,
+                "answer_preview": (node.answer[:200] + "...") if node.answer and len(node.answer) > 200 else node.answer,
+                "children": node.children,
+                "parent_id": orchestrator.backward_adj.get(node_id)
+            })
+        
+        return {
+            "session_id": session_id,
+            "nodes": nodes,
+            "total_nodes": len(nodes)
+        }
     
-    orchestrator = session_storage[session_id]
-    nodes = []
+    # Try persistent storage
+    stored_session = persistent_storage.load_session(session_id)
+    if stored_session:
+        execution_report = stored_session.get("execution_report", {})
+        all_nodes = execution_report.get("all_nodes", {})
+        
+        # Convert stored nodes to the expected format
+        nodes = []
+        for node_id, node_data in sorted(all_nodes.items(), key=lambda x: int(x[0].replace("node_", ""))):
+            node_id_clean = node_id.replace("node_", "")
+            nodes.append({
+                "id": node_id_clean,
+                "level": node_data.get("level", 0),
+                "question": node_data.get("question", ""),
+                "is_leaf": node_data.get("is_leaf", False),
+                "has_answer": node_data.get("answer") is not None,
+                "answer_preview": (node_data.get("answer", "")[:200] + "...") if node_data.get("answer") and len(node_data.get("answer", "")) > 200 else node_data.get("answer", ""),
+                "children": node_data.get("children", []),
+                "parent_id": node_data.get("parent_id")
+            })
+        
+        return {
+            "session_id": session_id,
+            "nodes": nodes,
+            "total_nodes": len(nodes),
+            "from_storage": True
+        }
     
-    for node_id, node in sorted(orchestrator.nodes.items(), key=lambda x: int(x[0])):
-        nodes.append({
-            "id": node_id,
-            "level": node.level,
-            "question": node.question,
-            "is_leaf": node.is_leaf,
-            "has_answer": node.answer is not None,
-            "answer_preview": (node.answer[:200] + "...") if node.answer and len(node.answer) > 200 else node.answer,
-            "children": node.children,
-            "parent_id": orchestrator.backward_adj.get(node_id)
-        })
-    
-    return {
-        "session_id": session_id,
-        "nodes": nodes,
-        "total_nodes": len(nodes)
-    }
+    raise HTTPException(status_code=404, detail="Session not found")
 
 
 @app.get("/sessions/{session_id}/nodes/{node_id}")
 async def get_node(session_id: str, node_id: str):
     """Get details of a specific node"""
-    if session_id not in session_storage:
-        raise HTTPException(status_code=404, detail="Session not found")
+    # Try in-memory storage first
+    if session_id in session_storage:
+        orchestrator = session_storage[session_id]
+        
+        if node_id not in orchestrator.nodes:
+            raise HTTPException(status_code=404, detail="Node not found")
+        
+        node = orchestrator.nodes[node_id]
+        
+        return {
+            "id": node_id,
+            "level": node.level,
+            "question": node.question,
+            "answer": node.answer,
+            "is_leaf": node.is_leaf,
+            "children": node.children,
+            "parent_id": orchestrator.backward_adj.get(node_id),
+            "context": node.context[:500] + "..." if node.context and len(node.context) > 500 else node.context,
+            "internet_research": node.internet_research,
+            "mas_data_used": node.mas_data_used
+        }
     
-    orchestrator = session_storage[session_id]
+    # Try persistent storage
+    stored_session = persistent_storage.load_session(session_id)
+    if stored_session:
+        execution_report = stored_session.get("execution_report", {})
+        all_nodes = execution_report.get("all_nodes", {})
+        node_key = f"node_{node_id}"
+        
+        if node_key not in all_nodes:
+            raise HTTPException(status_code=404, detail="Node not found")
+        
+        node_data = all_nodes[node_key]
+        
+        return {
+            "id": node_id,
+            "level": node_data.get("level", 0),
+            "question": node_data.get("question", ""),
+            "answer": node_data.get("answer", ""),
+            "is_leaf": node_data.get("is_leaf", False),
+            "children": node_data.get("children", []),
+            "parent_id": node_data.get("parent_id"),
+            "context": (node_data.get("context", "")[:500] + "...") if node_data.get("context") and len(node_data.get("context", "")) > 500 else node_data.get("context", ""),
+            "internet_research": node_data.get("internet_research", {}),
+            "mas_data_used": node_data.get("mas_data_used", {}),
+            "from_storage": True
+        }
     
-    if node_id not in orchestrator.nodes:
-        raise HTTPException(status_code=404, detail="Node not found")
-    
-    node = orchestrator.nodes[node_id]
-    
-    return {
-        "id": node_id,
-        "level": node.level,
-        "question": node.question,
-        "answer": node.answer,
-        "is_leaf": node.is_leaf,
-        "children": node.children,
-        "parent_id": orchestrator.backward_adj.get(node_id),
-        "context": node.context[:500] + "..." if node.context and len(node.context) > 500 else node.context,
-        "internet_research": node.internet_research,
-        "mas_data_used": node.mas_data_used
-    }
+    raise HTTPException(status_code=404, detail="Session not found")
 
 
 @app.post("/sessions/{session_id}/nodes/{node_id}/edit")
