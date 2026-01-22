@@ -465,9 +465,19 @@
 
         <div class="content">
             <div class="main-panel">
+                <!-- Previous Sessions -->
+                <div class="card hidden" id="previousSessionsCard">
+                    <h2>Previous Reports</h2>
+                    <div id="previousSessionsList" class="tree-container">
+                        <p>Loading previous sessions...</p>
+                    </div>
+                    <button class="btn btn-secondary" id="hideSessionsBtn" style="margin-top: 10px;">Hide Previous Sessions</button>
+                </div>
+
                 <!-- Analysis Form -->
                 <div class="card">
                     <h2>Start New Analysis</h2>
+                    <button class="btn btn-secondary" id="showSessionsBtn" style="margin-bottom: 15px;">View Previous Reports</button>
                     <form id="analyzeForm">
                         <div class="form-group">
                             <label for="userId">User ID:</label>
@@ -935,6 +945,81 @@
 
         // Make selectNode available globally
         window.selectNode = selectNode;
+
+        // Load previous sessions
+        async function loadPreviousSessions() {
+            try {
+                const response = await fetch(`${API_BASE}/sessions?limit=20`);
+                if (!response.ok) throw new Error('Failed to load sessions');
+                
+                const data = await response.json();
+                const container = document.getElementById('previousSessionsList');
+                
+                if (data.sessions.length === 0) {
+                    container.innerHTML = '<p>No previous sessions found</p>';
+                    return;
+                }
+                
+                container.innerHTML = data.sessions.map(session => `
+                    <div class="tree-node" style="cursor: pointer;" onclick="loadPreviousSession('${session.session_id}')">
+                        <div class="node-header">
+                            <span class="node-id">Session ${session.session_id.substring(0, 8)}...</span>
+                            <span class="node-level">${new Date(session.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <div class="node-question">${escapeHtml(session.query || 'No query')}</div>
+                        <div style="margin-top: 8px; font-size: 0.9em; color: #666;">
+                            Nodes: ${session.num_nodes} | Position: ${session.final_position || 'N/A'} | User: ${session.user_id || 'N/A'}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('previousSessionsList').innerHTML = 
+                    `<p style="color: red;">Error loading sessions: ${error.message}</p>`;
+            }
+        }
+
+        // Load a previous session
+        async function loadPreviousSession(sessionId) {
+            try {
+                const response = await fetch(`${API_BASE}/sessions/${sessionId}/report`);
+                if (!response.ok) throw new Error('Failed to load session');
+                
+                const data = await response.json();
+                currentSessionId = sessionId;
+                
+                // Display the response
+                displayResponse({
+                    answer: data.execution_report.final_decision?.detailed_analysis || '',
+                    execution_report: data.execution_report
+                });
+                
+                // Load nodes if available
+                await loadNodes();
+                await loadReport();
+                
+                showAlert('Previous session loaded successfully', 'success');
+                
+                // Hide previous sessions panel
+                document.getElementById('previousSessionsCard').classList.add('hidden');
+                
+            } catch (error) {
+                showAlert(`Error loading session: ${error.message}`, 'error');
+            }
+        }
+
+        // Show previous sessions
+        document.getElementById('showSessionsBtn').addEventListener('click', async () => {
+            document.getElementById('previousSessionsCard').classList.remove('hidden');
+            await loadPreviousSessions();
+        });
+
+        // Hide previous sessions
+        document.getElementById('hideSessionsBtn').addEventListener('click', () => {
+            document.getElementById('previousSessionsCard').classList.add('hidden');
+        });
+
+        // Make loadPreviousSession available globally
+        window.loadPreviousSession = loadPreviousSession;
     </script>
 </body>
 </html>
