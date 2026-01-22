@@ -46,18 +46,14 @@ ENV/
 secrets.json
 config.local.py
 
-# Execution results and reports
-*.json
-!package.json
-!package-lock.json
-!tsconfig.json
-!**/requirements.txt
-!**/config.py
+# Execution results and reports (exclude only specific execution files)
 execution_report*.json
 last_run_results.json
 execution_results.json
 output.json
 user_preferences.json
+webgpt_response.json
+final_report_*.md
 
 # Logs
 *.log
